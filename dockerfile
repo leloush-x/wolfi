@@ -15,9 +15,7 @@ RUN apk add --no-cache \
     openssh \
     python3 \
     py3-pip \
-    build-base \
-    cmake \
-    ninja-build \
+    build-base \    
     git \
     shadow \
     bash \
@@ -54,16 +52,14 @@ RUN sed -i 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config && \
 # Step 9: Create a basic landing page for Render's active uptime checks
 RUN echo "<html><body><h1>Render Health Check Bypass Active (Wolfi OS + Bun + Node)</h1></body></html>" > /var/www/html/index.html
 
+# Step 10: Install ngrok and configure authentication
+RUN curl -fsSL https://bin.ngrok.com/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz | tar -xz -C /usr/local/bin && \
+    ngrok config add-authtoken 2bmDkAveY0grVVDlgwVXiOP5ia2_3vyBFrEpUdZou7veySL6p
+
 # Expose 10000 for Render to listen to, and 8022 for internal use
 EXPOSE 8022 10000
 
-# Step 10: Boot Python web server in background, spin up sshd, and hold the reverse tunnel open
+# Step 11: Boot Python web server in background, spin up sshd, and hold the reverse tunnel open with ngrok
 CMD python3 -m http.server 10000 --directory /var/www/html > /dev/null 2>&1 & \
     /usr/sbin/sshd && \
-    while true; do \
-      ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -o ServerAliveInterval=30 \
-          -N \
-          -R wolfie:22:localhost:8022 \
-          choco@ssh-j.com; \
-      sleep 5; \
-    done
+    ngrok tcp 8022 --log stdout
